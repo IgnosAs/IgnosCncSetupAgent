@@ -38,12 +38,12 @@ stages:
           #  condition: succeeded()
 
           - task: DotNetCoreCLI@2
-            displayName: 'Publish Windows'
+            displayName: 'Publish'
             inputs:
               command: 'publish'
               publishWebProjects: false
               projects: '**/IgnosCncSetupAgent.csproj'
-              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)/win-x64 -r win-x64 --self-contained false'
+              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)'
               zipAfterPublish: true
             condition: succeeded()
 
