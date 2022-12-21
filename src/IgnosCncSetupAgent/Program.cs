@@ -6,7 +6,6 @@ using IgnosCncSetupAgent.Messaging;
 
 IHost host = Host.CreateDefaultBuilder(args)
     .UseWindowsService(options => options.ServiceName = "Ignos CNC Setup Agent Service")
-    .UseSystemd()
     .ConfigureServices((hostContext, services) =>
     {
         services.Configure<FileTransferWorkerOptions>(
