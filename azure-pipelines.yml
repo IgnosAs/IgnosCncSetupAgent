@@ -24,6 +24,8 @@ stages:
             inputs:
               version: '7.0.x'
               includePreviewVersions: false
+          
+          - task: NuGetAuthenticate@1
               
           - task: DotNetCoreCLI@2
             displayName: 'Publish Linux'
