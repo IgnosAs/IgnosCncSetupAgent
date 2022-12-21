@@ -1,0 +1,49 @@
+# Only run against master
+trigger:
+- master
+
+# Run on PRs targeting master
+pr:
+  - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+
+  - stage: 'Build'
+    displayName: 'Build the application'
+    jobs:
+      - job: 'Build'
+        displayName: 'Build job'
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: '7.0.x'
+              includePreviewVersions: false
+              
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish Linux'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: '**/IgnosCncSetupAgent.csproj'
+              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)/linux-x64 -r linux-x64 --self-contained false'
+              zipAfterPublish: true
+            condition: succeeded()
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish Windows'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              projects: '**/IgnosCncSetupAgent.csproj'
+              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)/win-x64 -r win-x64 --self-contained false'
+              zipAfterPublish: true
+            condition: succeeded()
+
+          - publish: '$(Build.ArtifactStagingDirectory)'
+            artifact: drop
