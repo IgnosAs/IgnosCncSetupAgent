@@ -27,15 +27,15 @@ stages:
           
           - task: NuGetAuthenticate@1
               
-          - task: DotNetCoreCLI@2
-            displayName: 'Publish Linux'
-            inputs:
-              command: 'publish'
-              publishWebProjects: false
-              projects: '**/IgnosCncSetupAgent.csproj'
-              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)/linux-x64 -r linux-x64 --self-contained false'
-              zipAfterPublish: true
-            condition: succeeded()
+          #- task: DotNetCoreCLI@2
+          #  displayName: 'Publish Linux'
+          #  inputs:
+          #    command: 'publish'
+          #    publishWebProjects: false
+          #    projects: '**/IgnosCncSetupAgent.csproj'
+          #    arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)/linux-x64 -r linux-x64 --self-contained false'
+          #    zipAfterPublish: true
+          #  condition: succeeded()
 
           - task: DotNetCoreCLI@2
             displayName: 'Publish Windows'
