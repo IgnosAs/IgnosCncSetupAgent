@@ -1,6 +1,8 @@
-﻿using Azure.Messaging.ServiceBus;
+﻿using System.Text.Json;
+using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
 using Ignos.Common.Domain.CncSetup;
+using Ignos.Common.Domain.CncSetup.Messages;
 
 namespace IgnosCncSetupAgent.FileTransfer;
 
@@ -15,28 +17,32 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     public async Task MessageHandler(ProcessMessageEventArgs args)
     {
-        var cncMachineOperationTransfer = GetCncMachineOperationTransfer(args.Message);
+        var cncTransferMessage = await GetCncTransferMessage(args);
 
-        // Temp
-        var localPath = args.Message.Body.ToString();
+        if (cncTransferMessage == null)
+            return;
 
-        _logger.LogDebug("Received message {Message} for local path {LocalPath}",
-            cncMachineOperationTransfer, localPath);
+        _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
+            cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
 
-        await HandleTransferAndReport(cncMachineOperationTransfer, localPath, args.CancellationToken);
+        await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
     }
 
-    private CncMachineOperationTransfer GetCncMachineOperationTransfer(ServiceBusReceivedMessage message)
+    private async Task<CncTransferMessage?> GetCncTransferMessage(ProcessMessageEventArgs args)
     {
-        return new CncMachineOperationTransfer
+        CncTransferMessage? result = null;
+        try
         {
-            Direction = FileTransferDirection.FromCloud,
-            Files = new List<string>
-            {
-                "https://ignossttest.blob.core.windows.net/ingusprod-measurementschemas/0ae6e15b-0cea-47f1-be6a-62be58e4295c/6/markeddrawing.pdf?sv=2021-10-04&se=2022-12-22T00%3A49%3A02Z&sr=b&sp=r&sig=Y2Llj8tOqEKelvtvVj29PwMZR2Pp8F3T1DMWNEkEv2Y%3D",
-                "https://ignossttest.blob.core.windows.net/ingusprod-measurementschemas/2bd8ff04-1ca3-42a6-bb90-9d4bbc1d8cba/36/drawing.pdf?sv=2021-10-04&se=2022-12-22T00%3A49%3A02Z&sr=b&sp=r&sig=jJp8COaltu%2BNMAaKfS3KC%2FFqyEUbEpL7WZuaKvJVqEA%3D"
-            }
-        };
+            result = JsonSerializer.Deserialize<CncTransferMessage>(args.Message.Body);
+        }
+        catch (Exception ex)
+        {
+            // No point in retrying this message. 
+            _logger.LogError(ex, "Failed to deserialize message");
+            await args.DeadLetterMessageAsync(args.Message, "Failed to deserialize", ex.Message, args.CancellationToken);
+        }
+
+        return result;
     }
 
     public Task ErrorHandler(ProcessErrorEventArgs args)
@@ -48,23 +54,23 @@ public class FileTransferHandlers : IFileTransferHandlers
         return Task.CompletedTask;
     }
 
-    private async Task HandleTransferAndReport(CncMachineOperationTransfer cncMachineOperationTransfer, string localPath, CancellationToken cancellationToken)
+    private async Task HandleTransferAndReport(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
         try
         {
             // Report in progress to API
 
             // Decide if we can handle or not
-            switch (cncMachineOperationTransfer.Direction)
+            switch (cncTransferMessage.Direction)
             {
                 case FileTransferDirection.FromCloud:
-                    await HandleTransferFromCloud(cncMachineOperationTransfer, localPath, cancellationToken);
+                    await HandleTransferFromCloud(cncTransferMessage, cancellationToken);
                     break;
                 case FileTransferDirection.ToCloud:
-                   await HandleTransferToCloud(cncMachineOperationTransfer, localPath, cancellationToken);
+                   await HandleTransferToCloud(cncTransferMessage, cancellationToken);
                     break;
                 default:
-                    _logger.LogError("Received unknown direction {Direction}", cncMachineOperationTransfer.Direction);
+                    _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
                     return;
             }
 
@@ -79,26 +85,21 @@ public class FileTransferHandlers : IFileTransferHandlers
         }
     }
 
-    public async Task HandleTransferFromCloud(CncMachineOperationTransfer cncMachineOperationTransfer, string localPath, CancellationToken cancellationToken)
+    public async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
-        await DeleteAllFilesAndFolders(localPath, cancellationToken);
+        await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
 
-        await DownloadAllFiles(cncMachineOperationTransfer.Files, localPath, cancellationToken);
+        await DownloadAllFiles(cncTransferMessage, cancellationToken);
     }
 
-    private async Task HandleTransferToCloud(CncMachineOperationTransfer cncMachineOperationTransfer, string localPath, CancellationToken cancellationToken)
+    private async Task HandleTransferToCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
         // Get file upload URIs.
-
-        var uploadUris = await GetUploadUris(Directory.GetFiles(localPath), cancellationToken);
+        var fileUploadUris = new string[0];
 
         // Upload files
-        await Task.WhenAll(uploadUris.Select(uri => UploadFile(uri, localPath, cancellationToken)));
-    }
-
-    private Task<List<string>> GetUploadUris(string[] files, CancellationToken cancellationToken)
-    {
-        return Task.FromResult(new List<string> { "" });
+        await Task.WhenAll(fileUploadUris.Select(
+            uri => UploadFile(uri, cncTransferMessage.MachinePath, cancellationToken)));
     }
 
     private async Task DeleteAllFilesAndFolders(string path, CancellationToken cancellationToken)
@@ -119,16 +120,17 @@ public class FileTransferHandlers : IFileTransferHandlers
         await Task.WhenAll(deleteTasks);
     }
 
-    private async Task DownloadAllFiles(List<string> fileUris, string localPath, CancellationToken cancellationToken)
+    private async Task DownloadAllFiles(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
-        await Task.WhenAll(fileUris.Select(fileUrl => DownloadFile(fileUrl, localPath, cancellationToken)));
+        await Task.WhenAll(cncTransferMessage.FilesToDownload.Select(
+            fileToDownload => DownloadFile(fileToDownload, cncTransferMessage.MachinePath, cancellationToken)));
     }
 
-    private async Task DownloadFile(string fileUri, string localPath, CancellationToken cancellationToken)
+    private async Task DownloadFile(FileToDownload fileToDownload, string machinePath, CancellationToken cancellationToken)
     {
-        var blobClient = new BlobClient(new Uri(fileUri));
+        var blobClient = new BlobClient(new Uri(fileToDownload.Url));
 
-        using var localFile = File.Create(Path.Combine(localPath, Path.GetFileName(blobClient.Name)));
+        using var localFile = File.Create(Path.Combine(machinePath, fileToDownload.Name));
 
         await blobClient.DownloadToAsync(localFile, cancellationToken);
     }
