@@ -10,7 +10,9 @@
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.11.1" />
     <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.0.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
     <PackageReference Include="Ignos.Api.Client" Version="2022.12.21.4367" />
+    <PackageReference Include="Ignos.Common.Domain" Version="2022.12.21.4368" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.21.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="7.0.0" />

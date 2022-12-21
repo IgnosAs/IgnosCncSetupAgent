@@ -19,7 +19,7 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddHostedService<FileTransferWorker>();
 
         services.AddApplicationInsightsTelemetryWorkerService();
-        
+
         services.AddIgnosHttpClient(hostContext.Configuration)
             .AddAzureAuthenticationHandler()
             .AddDefaultPolicyHandler();
