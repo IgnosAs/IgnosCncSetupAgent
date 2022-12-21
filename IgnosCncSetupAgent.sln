@@ -3,12 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IgnosCncSetupAgent", "IgnosCncSetupAgent\IgnosCncSetupAgent.csproj", "{B9A4A685-6D29-46E3-A387-707AD7586207}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IgnosCncSetupAgent", "src\IgnosCncSetupAgent\IgnosCncSetupAgent.csproj", "{B9A4A685-6D29-46E3-A387-707AD7586207}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9DBD6B09-39BD-461D-A2B4-C0AB45C3C2A7}"
 	ProjectSection(SolutionItems) = preProject
 		azure-pipelines.yml = azure-pipelines.yml
 	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{21C71FF3-2085-4857-9842-15F03B22E374}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,6 +25,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B9A4A685-6D29-46E3-A387-707AD7586207} = {21C71FF3-2085-4857-9842-15F03B22E374}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D74A1EC6-AEB7-4082-8D6B-0B97C215E01F}
