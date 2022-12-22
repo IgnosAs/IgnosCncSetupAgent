@@ -39,3 +39,14 @@ stages:
 
           - publish: '$(Build.ArtifactStagingDirectory)'
             artifact: drop
+
+          - task: GitHubRelease@1
+            displayName: 'Create GitHub Release'
+            condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/release-v')   
+            inputs:
+              gitHubConnection: 'IgnosAs (19)'
+              tagSource: userSpecifiedTag
+              tag: $(Build.BuildNumber)
+
+
+            
