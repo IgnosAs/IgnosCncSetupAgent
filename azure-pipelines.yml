@@ -44,7 +44,7 @@ stages:
             displayName: 'Create GitHub Release'
             condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/release-v')   
             inputs:
-              gitHubConnection: 'IgnosAs (19)'
+              gitHubConnection: 'github.com_tthorsen'
               tagSource: userSpecifiedTag
               tag: $(Build.BuildNumber)
 
