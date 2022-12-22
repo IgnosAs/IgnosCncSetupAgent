@@ -1,17 +1,25 @@
 ﻿using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
-using Ignos.Common.Domain.CncSetup;
+using Ignos.Api.Client;
 using Ignos.Common.Domain.CncSetup.Messages;
+using FileTransferDirection = Ignos.Common.Domain.CncSetup.FileTransferDirection;
 
 namespace IgnosCncSetupAgent.FileTransfer;
 
 public class FileTransferHandlers : IFileTransferHandlers
 {
+    private readonly ICncSetupClient _cncSetupClient;
+    private readonly ICncFileTransferClient _cncFileTransferClient;
     private readonly ILogger<FileTransferHandlers> _logger;
-    
-    public FileTransferHandlers(ILogger<FileTransferHandlers> logger)
+
+    public FileTransferHandlers(
+        ICncSetupClient cncSetupClient,
+        ICncFileTransferClient cncFileTransferClient,
+        ILogger<FileTransferHandlers> logger)
     {
+        _cncSetupClient = cncSetupClient;
+        _cncFileTransferClient = cncFileTransferClient;
         _logger = logger;
     }
 
@@ -26,7 +34,10 @@ public class FileTransferHandlers : IFileTransferHandlers
             cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
 
         if (!CncTransferMessageIsValid(cncTransferMessage))
+        {
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
             return;
+        }
 
         await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
     }
@@ -40,7 +51,7 @@ public class FileTransferHandlers : IFileTransferHandlers
             return false;
         }
 
-        if (cncTransferMessage.Direction == FileTransferDirection.FromCloud && 
+        if (cncTransferMessage.Direction == FileTransferDirection.FromCloud &&
             cncTransferMessage.FilesToDownload.Count == 0)
         {
             _logger.LogError("CncTransferMessage with transfer id {TransferId} has no files to download from cloud",
@@ -82,6 +93,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         try
         {
             // Report in progress to API
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.InProgress);
 
             // Decide if we can handle or not
             switch (cncTransferMessage.Direction)
@@ -90,25 +102,40 @@ public class FileTransferHandlers : IFileTransferHandlers
                     await HandleTransferFromCloud(cncTransferMessage, cancellationToken);
                     break;
                 case FileTransferDirection.ToCloud:
-                   await HandleTransferToCloud(cncTransferMessage, cancellationToken);
+                    await HandleTransferToCloud(cncTransferMessage, cancellationToken);
                     break;
                 default:
                     _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
+                    await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
                     return;
             }
 
             // Report completed to API
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success);
         }
         catch (Exception)
         {
             // Report failure to API.
-            
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
+
             // Throw to retry the message? 
             throw;
         }
     }
 
-    public async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
+    private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage,
+        FileTransferStatus fileTransferStatus)
+    {
+        return _cncFileTransferClient.SetTransferStatusAsync(
+            cncTransferMessage.TransferId,
+            new SetTransferStatusRequest
+            {
+                Status = fileTransferStatus,
+                Files = cncTransferMessage.FilesToDownload.Select(f => f.Name).ToList(),
+            });
+    }
+
+    private async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
         await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
 
@@ -117,12 +144,19 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     private async Task HandleTransferToCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
+        var localFiles = Directory.GetFiles(cncTransferMessage.MachinePath);
+
         // Get file upload URIs.
-        var fileUploadUris = new string[0];
+        var fileUploads = await _cncSetupClient.CreateUploadProgramsInfoAsync(
+            cncTransferMessage.CncMachineOperationId,
+            new UploadFileRequest { Filenames = localFiles.Select(Path.GetFileName).ToList() });
 
         // Upload files
-        await Task.WhenAll(fileUploadUris.Select(
-            uri => UploadFile(uri, cncTransferMessage.MachinePath, cancellationToken)));
+        await Task.WhenAll(fileUploads.Select(
+            upload => UploadFile(upload, cncTransferMessage.MachinePath, cancellationToken)));
+
+        // Delete everything 
+        await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
     }
 
     private async Task DeleteAllFilesAndFolders(string path, CancellationToken cancellationToken)
@@ -158,12 +192,12 @@ public class FileTransferHandlers : IFileTransferHandlers
         await blobClient.DownloadToAsync(localFile, cancellationToken);
     }
 
-    private async Task UploadFile(string fileUri, string localPath, CancellationToken cancellationToken)
+    private async Task UploadFile(UploadFileDto upload, string machinePath, CancellationToken cancellationToken)
     {
-        var blobClient = new BlobClient(new Uri(fileUri));
+        var blobClient = new BlobClient(new Uri(upload.Url));
 
-        using var localFile = File.OpenRead(Path.Combine(localPath, Path.GetFileName(blobClient.Name)));
+        using var localFile = File.OpenRead(Path.Combine(machinePath, upload.Filename));
 
-        await blobClient.UploadAsync(localFile, cancellationToken);
+        await blobClient.UploadAsync(localFile, true, cancellationToken);
     }
 }

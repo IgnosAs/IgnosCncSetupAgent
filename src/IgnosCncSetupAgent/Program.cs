@@ -24,6 +24,7 @@ IHost host = Host.CreateDefaultBuilder(args)
             .AddDefaultPolicyHandler();
 
         services.AddIgnosApiClient<ICncFileTransferClient, CncFileTransferClient>();
+        services.AddIgnosApiClient<ICncSetupClient, CncSetupClient>();
     })
     .Build();
 
