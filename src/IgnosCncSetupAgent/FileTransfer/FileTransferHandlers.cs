@@ -25,7 +25,30 @@ public class FileTransferHandlers : IFileTransferHandlers
         _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
             cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
 
+        if (!CncTransferMessageIsValid(cncTransferMessage))
+            return;
+
         await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
+    }
+
+    private bool CncTransferMessageIsValid(CncTransferMessage cncTransferMessage)
+    {
+        if (string.IsNullOrEmpty(cncTransferMessage.MachinePath))
+        {
+            _logger.LogError("CncTransferMessage with transfer id {TransferId} has empty machine path",
+                cncTransferMessage.TransferId);
+            return false;
+        }
+
+        if (cncTransferMessage.Direction == FileTransferDirection.FromCloud && 
+            cncTransferMessage.FilesToDownload.Count == 0)
+        {
+            _logger.LogError("CncTransferMessage with transfer id {TransferId} has no files to download from cloud",
+                cncTransferMessage.TransferId);
+            return false;
+        }
+
+        return true;
     }
 
     private async Task<CncTransferMessage?> GetCncTransferMessage(ProcessMessageEventArgs args)

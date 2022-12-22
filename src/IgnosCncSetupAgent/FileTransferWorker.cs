@@ -14,7 +14,7 @@ public class FileTransferWorker : BackgroundService
     private readonly FileTransferWorkerOptions _options;
 
     public FileTransferWorker(IAgentConfigService agentConfigService,
-        IServiceBusListenerFactory serviceBusListenerFactory, 
+        IServiceBusListenerFactory serviceBusListenerFactory,
         IFileTransferHandlers fileTransferHandlers, IOptions<FileTransferWorkerOptions> options,
         ILogger<FileTransferWorker> logger)
     {
@@ -27,32 +27,39 @@ public class FileTransferWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // TODO: Log failure
-        var config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
-
-        await using var serviceBusListener = _serviceBusListenerFactory.CreateServiceBusListener(
-            config, 
-            _fileTransferHandlers.MessageHandler,
-            _fileTransferHandlers.ErrorHandler,
-            _options.ServiceBusTransportType,
-            _options.MaxConcurrentListeners);
-
-        await serviceBusListener.StartProcessing(stoppingToken);
-
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            _logger.LogInformation("FileTransferWorker running at: {time}", DateTimeOffset.Now);
+            var config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
 
-            var delayUntilConfigurationRefresh = config.ConfigurationRefreshTime - DateTimeOffset.Now;
+            await using var serviceBusListener = _serviceBusListenerFactory.CreateServiceBusListener(
+                config,
+                _fileTransferHandlers.MessageHandler,
+                _fileTransferHandlers.ErrorHandler,
+                _options.ServiceBusTransportType,
+                _options.MaxConcurrentListeners);
 
-            if (delayUntilConfigurationRefresh > TimeSpan.FromSeconds(5))
-                await Task.Delay(delayUntilConfigurationRefresh, stoppingToken);
+            await serviceBusListener.StartProcessing(stoppingToken);
 
-            _logger.LogInformation("FileTransferWorker refreshing configuration at: {time}", DateTimeOffset.Now);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("FileTransferWorker running at: {time}", DateTimeOffset.Now);
 
-            config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
+                var delayUntilConfigurationRefresh = config.ConfigurationRefreshTime - DateTimeOffset.Now;
 
-            serviceBusListener.Reconfigure(config);
+                if (delayUntilConfigurationRefresh > TimeSpan.FromSeconds(5))
+                    await Task.Delay(delayUntilConfigurationRefresh, stoppingToken);
+
+                _logger.LogInformation("FileTransferWorker refreshing configuration at: {time}", DateTimeOffset.Now);
+
+                config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
+
+                serviceBusListener.Reconfigure(config);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Exception in {nameof(FileTransferWorker)}");
+            throw;
         }
     }
 }
