@@ -6,7 +6,7 @@ namespace IgnosCncSetupAgent;
 
 public class FileTransferWorkerTelemetryInitializer : ITelemetryInitializer
 {
-    private static string? buildNumber;
+    private static string buildNumber;
 
     static FileTransferWorkerTelemetryInitializer()
     {
