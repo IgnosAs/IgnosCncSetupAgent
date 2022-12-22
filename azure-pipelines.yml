@@ -42,7 +42,7 @@ stages:
 
           - task: GitHubRelease@1
             displayName: 'Create GitHub Release'
-            condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/release-v')   
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
             inputs:
               gitHubConnection: 'github.com_tthorsen'
               tagSource: userSpecifiedTag
