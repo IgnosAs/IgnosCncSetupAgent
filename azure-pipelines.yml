@@ -43,7 +43,7 @@ stages:
               command: 'publish'
               publishWebProjects: false
               projects: '**/IgnosCncSetupAgent.csproj'
-              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)'
+              arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)/$(buildConfiguration)'  /p:InformationalVersion=$(Build.BuildNumber)
               zipAfterPublish: true
             condition: succeeded()
 

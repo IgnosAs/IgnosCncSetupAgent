@@ -3,6 +3,7 @@ using IgnosCncSetupAgent;
 using IgnosCncSetupAgent.Config;
 using IgnosCncSetupAgent.FileTransfer;
 using IgnosCncSetupAgent.Messaging;
+using Microsoft.ApplicationInsights.Extensibility;
 
 IHost host = Host.CreateDefaultBuilder(args)
     .UseWindowsService(options => options.ServiceName = "Ignos CNC Setup Agent Service")
@@ -17,6 +18,7 @@ IHost host = Host.CreateDefaultBuilder(args)
 
         services.AddHostedService<FileTransferWorker>();
 
+        services.AddSingleton<ITelemetryInitializer, FileTransferWorkerTelemetryInitializer>();
         services.AddApplicationInsightsTelemetryWorkerService();
 
         services.AddIgnosHttpClient(hostContext.Configuration)
