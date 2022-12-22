@@ -47,6 +47,7 @@ stages:
               gitHubConnection: 'github.com_tthorsen'
               tagSource: userSpecifiedTag
               tag: $(Build.BuildNumber)
+              assets: $(Build.ArtifactStagingDirectory)/**/*.zip
 
 
             
