@@ -4,5 +4,5 @@ namespace IgnosCncSetupAgent.Config;
 
 public interface IAgentConfigService
 {
-    Task<AgentConfigDto> GetQueueConfig(string? agentId, CancellationToken cancellationToken);
+    Task<AgentConfigDto> GetQueueConfig(CancellationToken cancellationToken);
 }

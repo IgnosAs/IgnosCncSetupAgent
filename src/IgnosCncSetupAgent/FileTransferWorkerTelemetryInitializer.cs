@@ -1,22 +1,21 @@
 ﻿using System.Reflection;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Options;
 
 namespace IgnosCncSetupAgent;
 
 public class FileTransferWorkerTelemetryInitializer : ITelemetryInitializer
 {
-    private static string buildNumber;
+    private readonly string _agentVersion; 
 
-    static FileTransferWorkerTelemetryInitializer()
+    public FileTransferWorkerTelemetryInitializer(IOptions<FileTransferWorkerOptions> options)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        buildNumber =
-            assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "local";
+        _agentVersion = options.Value.AgentVersion;
     }
 
     public void Initialize(ITelemetry telemetry)
     {
-        telemetry.Context.GlobalProperties["AgentBuildNumber"] = buildNumber;
+        telemetry.Context.GlobalProperties["AgentVersion"] = _agentVersion;
     }
 }

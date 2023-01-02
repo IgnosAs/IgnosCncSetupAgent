@@ -8,7 +8,5 @@ public interface IServiceBusListenerFactory
     ServiceBusListener CreateServiceBusListener(
         AgentConfigDto agentConfig,
         Func<ProcessMessageEventArgs, Task> messageHandler,
-        Func<ProcessErrorEventArgs, Task> errorHandler,
-        ServiceBusTransportType serviceBusTransportType,
-        int maxConcurrentListeners);
+        Func<ProcessErrorEventArgs, Task> errorHandler);
 }

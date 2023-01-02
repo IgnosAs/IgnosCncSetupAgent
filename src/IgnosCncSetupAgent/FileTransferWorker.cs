@@ -29,14 +29,12 @@ public class FileTransferWorker : BackgroundService
     {
         try
         {
-            var config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
+            var config = await _agentConfigService.GetQueueConfig(stoppingToken);
 
             await using var serviceBusListener = _serviceBusListenerFactory.CreateServiceBusListener(
                 config,
                 _fileTransferHandlers.MessageHandler,
-                _fileTransferHandlers.ErrorHandler,
-                _options.ServiceBusTransportType,
-                _options.MaxConcurrentListeners);
+                _fileTransferHandlers.ErrorHandler);
 
             await serviceBusListener.StartProcessing(stoppingToken);
 
@@ -51,7 +49,7 @@ public class FileTransferWorker : BackgroundService
 
                 _logger.LogInformation("FileTransferWorker refreshing configuration at: {time}", DateTimeOffset.Now);
 
-                config = await _agentConfigService.GetQueueConfig(_options.AgentId, stoppingToken);
+                config = await _agentConfigService.GetQueueConfig(stoppingToken);
 
                 serviceBusListener.Reconfigure(config);
             }
