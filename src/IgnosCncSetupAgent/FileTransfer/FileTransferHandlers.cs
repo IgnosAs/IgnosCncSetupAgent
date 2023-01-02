@@ -23,6 +23,15 @@ public class FileTransferHandlers : IFileTransferHandlers
         _logger = logger;
     }
 
+    public Task ErrorHandler(ProcessErrorEventArgs args)
+    {
+        // the error source tells me at what point in the processing an error occurred
+        _logger.LogError(args.Exception, "Message handling error {ErrorSource} {FullyQualifiedNamespace} {EntityPath}",
+            args.ErrorSource, args.FullyQualifiedNamespace, args.EntityPath);
+
+        return Task.CompletedTask;
+    }
+
     public async Task MessageHandler(ProcessMessageEventArgs args)
     {
         var cncTransferMessage = await GetCncTransferMessage(args);
@@ -35,7 +44,7 @@ public class FileTransferHandlers : IFileTransferHandlers
 
         if (!CncTransferMessageIsValid(cncTransferMessage))
         {
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, args.CancellationToken);
             return;
         }
 
@@ -79,22 +88,23 @@ public class FileTransferHandlers : IFileTransferHandlers
         return result;
     }
 
-    public Task ErrorHandler(ProcessErrorEventArgs args)
+    private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage, FileTransferStatus fileTransferStatus,
+        CancellationToken cancellationToken, List<string>? filesTransferred = null)
     {
-        // the error source tells me at what point in the processing an error occurred
-        _logger.LogError(args.Exception, "Message handling error {ErrorSource} {FullyQualifiedNamespace} {EntityPath}",
-            args.ErrorSource, args.FullyQualifiedNamespace, args.EntityPath);
-
-        return Task.CompletedTask;
+        return _cncFileTransferClient.SetTransferStatusAsync(
+            cncTransferMessage.TransferId,
+            new SetTransferStatusRequest
+            {
+                Status = fileTransferStatus,
+                Files = filesTransferred ?? cncTransferMessage.FilesToDownload.Select(f => f.Name).ToList(),
+            },
+            cancellationToken);
     }
 
     private async Task HandleTransferAndReport(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
         try
         {
-            // Report in progress to API
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.InProgress);
-
             // Decide if we can handle or not
             switch (cncTransferMessage.Direction)
             {
@@ -106,33 +116,18 @@ public class FileTransferHandlers : IFileTransferHandlers
                     break;
                 default:
                     _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
-                    await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
+                    await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken);
                     return;
             }
-
-            // Report completed to API
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success);
         }
         catch (Exception)
         {
             // Report failure to API.
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed);
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken);
 
             // Throw to retry the message? 
             throw;
         }
-    }
-
-    private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage,
-        FileTransferStatus fileTransferStatus)
-    {
-        return _cncFileTransferClient.SetTransferStatusAsync(
-            cncTransferMessage.TransferId,
-            new SetTransferStatusRequest
-            {
-                Status = fileTransferStatus,
-                Files = cncTransferMessage.FilesToDownload.Select(f => f.Name).ToList(),
-            });
     }
 
     private async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
@@ -140,16 +135,23 @@ public class FileTransferHandlers : IFileTransferHandlers
         await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
 
         await DownloadAllFiles(cncTransferMessage, cancellationToken);
+
+        // Report completed to API
+        await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken);
     }
 
     private async Task HandleTransferToCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
-        var localFiles = Directory.GetFiles(cncTransferMessage.MachinePath);
+        // Path.GetFileName returns null only if we pass in null. So cast to string is OK
+        var localFiles = Directory.GetFiles(cncTransferMessage.MachinePath)
+            .Select(Path.GetFileName)
+            .Cast<string>()
+            .ToList();
 
         // Get file upload URIs.
         var fileUploads = await _cncSetupClient.CreateUploadProgramsInfoAsync(
             cncTransferMessage.CncMachineOperationId,
-            new UploadFileRequest { Filenames = localFiles.Select(Path.GetFileName).ToList() });
+            new UploadFileRequest { Filenames = localFiles });
 
         // Upload files
         await Task.WhenAll(fileUploads.Select(
@@ -157,6 +159,9 @@ public class FileTransferHandlers : IFileTransferHandlers
 
         // Delete everything 
         await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
+
+        // Report completed to API
+        await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken, localFiles);
     }
 
     private async Task DeleteAllFilesAndFolders(string path, CancellationToken cancellationToken)
