@@ -11,15 +11,19 @@ public class FileTransferHandlers : IFileTransferHandlers
 {
     private readonly ICncSetupClient _cncSetupClient;
     private readonly ICncFileTransferClient _cncFileTransferClient;
+    private readonly IMachinePathAuthenticator _machinePathAuthenticator;
     private readonly ILogger<FileTransferHandlers> _logger;
 
     public FileTransferHandlers(
         ICncSetupClient cncSetupClient,
         ICncFileTransferClient cncFileTransferClient,
-        ILogger<FileTransferHandlers> logger)
+        IMachinePathAuthenticator machinePathAuthenticator,
+        ILogger<FileTransferHandlers> logger
+        )
     {
         _cncSetupClient = cncSetupClient;
         _cncFileTransferClient = cncFileTransferClient;
+        _machinePathAuthenticator = machinePathAuthenticator;
         _logger = logger;
     }
 
@@ -39,14 +43,15 @@ public class FileTransferHandlers : IFileTransferHandlers
         if (cncTransferMessage == null)
             return;
 
-        _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
-            cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
-
         if (!CncTransferMessageIsValid(cncTransferMessage))
         {
             await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, args.CancellationToken);
+            await args.DeadLetterMessageAsync(args.Message, "Invalid", "Invalid message", args.CancellationToken);
             return;
         }
+
+        _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
+            cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
 
         await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
     }
@@ -65,6 +70,13 @@ public class FileTransferHandlers : IFileTransferHandlers
         {
             _logger.LogError("CncTransferMessage with transfer id {TransferId} has no files to download from cloud",
                 cncTransferMessage.TransferId);
+            return false;
+        }
+
+        if (cncTransferMessage.Direction != FileTransferDirection.ToCloud &&
+            cncTransferMessage.Direction != FileTransferDirection.FromCloud)
+        {
+            _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
             return false;
         }
 
@@ -105,20 +117,9 @@ public class FileTransferHandlers : IFileTransferHandlers
     {
         try
         {
-            // Decide if we can handle or not
-            switch (cncTransferMessage.Direction)
-            {
-                case FileTransferDirection.FromCloud:
-                    await HandleTransferFromCloud(cncTransferMessage, cancellationToken);
-                    break;
-                case FileTransferDirection.ToCloud:
-                    await HandleTransferToCloud(cncTransferMessage, cancellationToken);
-                    break;
-                default:
-                    _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
-                    await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken);
-                    return;
-            }
+            await _machinePathAuthenticator.AuthenticateIfRequiredAndRun(
+                cncTransferMessage, 
+                () => HandleTransfer(cncTransferMessage, cancellationToken));
         }
         catch (Exception)
         {
@@ -129,6 +130,29 @@ public class FileTransferHandlers : IFileTransferHandlers
             throw;
         }
     }
+
+    private async Task HandleTransfer(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
+    {
+        // Decide if we can handle or not
+        switch (cncTransferMessage.Direction)
+        {
+            case FileTransferDirection.FromCloud:
+                await HandleTransferFromCloud(cncTransferMessage, cancellationToken);
+                break;
+            case FileTransferDirection.ToCloud:
+                await HandleTransferToCloud(cncTransferMessage, cancellationToken);
+                break;
+        }
+    }
+
+    private bool ShouldImpersonate(CncTransferMessage cncTransferMessage)
+    {
+        if (!string.IsNullOrEmpty(cncTransferMessage.Username) && !string.IsNullOrEmpty(cncTransferMessage.Password))
+            return true;
+
+        return false;
+    }
+
 
     private async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
@@ -206,3 +230,4 @@ public class FileTransferHandlers : IFileTransferHandlers
         await blobClient.UploadAsync(localFile, true, cancellationToken);
     }
 }
+

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Ignos.Api.Client;
 using IgnosCncSetupAgent;
 using IgnosCncSetupAgent.Config;
@@ -15,6 +16,14 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IAgentConfigService, AgentConfigService>();
         services.AddTransient<IServiceBusListenerFactory, ServiceBusListenerFactory>();
         services.AddTransient<IFileTransferHandlers, FileTransferHandlers>();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            services.AddTransient<IMachinePathAuthenticator, AuthenticateMachinePathWithNetworkConnection>();
+        }
+        else
+        {
+            services.AddTransient<IMachinePathAuthenticator, AuthenticateMachinePathNoAuthentication>();
+        }
 
         services.AddHostedService<FileTransferWorker>();
 
