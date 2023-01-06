@@ -183,20 +183,10 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     private async Task DeleteAllFilesAndFolders(string path, CancellationToken cancellationToken)
     {
-        var deleteTasks = new[]
-        {
-            Task.Run(() => Parallel.ForEach(
+        await Task.Run(() => Parallel.ForEach(
                 Directory.GetFiles(path),
                 new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = 5 },
-                File.Delete), cancellationToken),
-
-            Task.Run(() => Parallel.ForEach(
-                Directory.GetDirectories(path),
-                new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = 5 },
-                directory => Directory.Delete(directory, true)), cancellationToken)
-        };
-
-        await Task.WhenAll(deleteTasks);
+                File.Delete), cancellationToken);
     }
 
     private async Task DownloadAllFiles(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
