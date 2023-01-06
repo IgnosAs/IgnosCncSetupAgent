@@ -18,11 +18,11 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddTransient<IFileTransferHandlers, FileTransferHandlers>();
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            services.AddTransient<IMachinePathAuthenticator, AuthenticateMachinePathWithNetworkConnection>();
+            services.AddTransient<IMachineShareAuthenticator, AuthenticateMachineShareWithNetworkConnection>();
         }
         else
         {
-            services.AddTransient<IMachinePathAuthenticator, AuthenticateMachinePathNoAuthentication>();
+            services.AddTransient<IMachineShareAuthenticator, AuthenticateMachineShareNoAuthentication>();
         }
 
         services.AddHostedService<FileTransferWorker>();

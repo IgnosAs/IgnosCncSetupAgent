@@ -7,7 +7,7 @@ using Ignos.Common.Domain.CncSetup.Messages;
 namespace IgnosCncSetupAgent.FileTransfer;
 
 [SupportedOSPlatform("windows")]
-public class AuthenticateMachinePathWithNetworkConnection : IMachinePathAuthenticator
+public class AuthenticateMachineShareWithNetworkConnection : IMachineShareAuthenticator
 {
     public async Task AuthenticateIfRequiredAndRun(CncTransferMessage cncTransferMessage, Func<Task> job)
     {
@@ -15,7 +15,7 @@ public class AuthenticateMachinePathWithNetworkConnection : IMachinePathAuthenti
         {
             var credential = new NetworkCredential(
                 cncTransferMessage.Username, cncTransferMessage.Password, cncTransferMessage.Domain);
-            using var connection = new NetworkConnection(cncTransferMessage.MachinePath, credential);
+            using var connection = new NetworkConnection(cncTransferMessage.MachineShare, credential);
             await job();
         }
         else

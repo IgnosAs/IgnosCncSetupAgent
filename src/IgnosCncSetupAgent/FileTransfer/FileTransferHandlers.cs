@@ -11,19 +11,19 @@ public class FileTransferHandlers : IFileTransferHandlers
 {
     private readonly ICncSetupClient _cncSetupClient;
     private readonly ICncFileTransferClient _cncFileTransferClient;
-    private readonly IMachinePathAuthenticator _machinePathAuthenticator;
+    private readonly IMachineShareAuthenticator _machineShareAuthenticator;
     private readonly ILogger<FileTransferHandlers> _logger;
 
     public FileTransferHandlers(
         ICncSetupClient cncSetupClient,
         ICncFileTransferClient cncFileTransferClient,
-        IMachinePathAuthenticator machinePathAuthenticator,
+        IMachineShareAuthenticator machineShareAuthenticator,
         ILogger<FileTransferHandlers> logger
         )
     {
         _cncSetupClient = cncSetupClient;
         _cncFileTransferClient = cncFileTransferClient;
-        _machinePathAuthenticator = machinePathAuthenticator;
+        _machineShareAuthenticator = machineShareAuthenticator;
         _logger = logger;
     }
 
@@ -51,16 +51,16 @@ public class FileTransferHandlers : IFileTransferHandlers
         }
 
         _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
-            cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.MachinePath);
+            cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.GetLocalPath());
 
         await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
     }
 
     private bool CncTransferMessageIsValid(CncTransferMessage cncTransferMessage)
     {
-        if (string.IsNullOrEmpty(cncTransferMessage.MachinePath))
+        if (string.IsNullOrEmpty(cncTransferMessage.MachineShare))
         {
-            _logger.LogError("CncTransferMessage with transfer id {TransferId} has empty machine path",
+            _logger.LogError("CncTransferMessage with transfer id {TransferId} has empty machine share",
                 cncTransferMessage.TransferId);
             return false;
         }
@@ -117,7 +117,7 @@ public class FileTransferHandlers : IFileTransferHandlers
     {
         try
         {
-            await _machinePathAuthenticator.AuthenticateIfRequiredAndRun(
+            await _machineShareAuthenticator.AuthenticateIfRequiredAndRun(
                 cncTransferMessage, 
                 () => HandleTransfer(cncTransferMessage, cancellationToken));
         }
@@ -145,18 +145,9 @@ public class FileTransferHandlers : IFileTransferHandlers
         }
     }
 
-    private bool ShouldImpersonate(CncTransferMessage cncTransferMessage)
-    {
-        if (!string.IsNullOrEmpty(cncTransferMessage.Username) && !string.IsNullOrEmpty(cncTransferMessage.Password))
-            return true;
-
-        return false;
-    }
-
-
     private async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
-        await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
+        await DeleteAllFilesAndFolders(cncTransferMessage.GetLocalPath(), cancellationToken);
 
         await DownloadAllFiles(cncTransferMessage, cancellationToken);
 
@@ -166,8 +157,10 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     private async Task HandleTransferToCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
+        string localPath = cncTransferMessage.GetLocalPath();
+
         // Path.GetFileName returns null only if we pass in null. So cast to string is OK
-        var localFiles = Directory.GetFiles(cncTransferMessage.MachinePath)
+        var localFiles = Directory.GetFiles(localPath)
             .Select(Path.GetFileName)
             .Cast<string>()
             .ToList();
@@ -179,10 +172,10 @@ public class FileTransferHandlers : IFileTransferHandlers
 
         // Upload files
         await Task.WhenAll(fileUploads.Select(
-            upload => UploadFile(upload, cncTransferMessage.MachinePath, cancellationToken)));
+            upload => UploadFile(upload, localPath, cancellationToken)));
 
         // Delete everything 
-        await DeleteAllFilesAndFolders(cncTransferMessage.MachinePath, cancellationToken);
+        await DeleteAllFilesAndFolders(localPath, cancellationToken);
 
         // Report completed to API
         await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken, localFiles);
@@ -209,23 +202,23 @@ public class FileTransferHandlers : IFileTransferHandlers
     private async Task DownloadAllFiles(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
         await Task.WhenAll(cncTransferMessage.FilesToDownload.Select(
-            fileToDownload => DownloadFile(fileToDownload, cncTransferMessage.MachinePath, cancellationToken)));
+            fileToDownload => DownloadFile(fileToDownload, cncTransferMessage.GetLocalPath(), cancellationToken)));
     }
 
-    private async Task DownloadFile(FileToDownload fileToDownload, string machinePath, CancellationToken cancellationToken)
+    private async Task DownloadFile(FileToDownload fileToDownload, string localPath, CancellationToken cancellationToken)
     {
         var blobClient = new BlobClient(new Uri(fileToDownload.Url));
 
-        using var localFile = File.Create(Path.Combine(machinePath, fileToDownload.Name));
+        using var localFile = File.Create(Path.Join(localPath, fileToDownload.Name));
 
         await blobClient.DownloadToAsync(localFile, cancellationToken);
     }
 
-    private async Task UploadFile(UploadFileDto upload, string machinePath, CancellationToken cancellationToken)
+    private async Task UploadFile(UploadFileDto upload, string localPath, CancellationToken cancellationToken)
     {
         var blobClient = new BlobClient(new Uri(upload.Url));
 
-        using var localFile = File.OpenRead(Path.Combine(machinePath, upload.Filename));
+        using var localFile = File.OpenRead(Path.Join(localPath, upload.Filename));
 
         await blobClient.UploadAsync(localFile, true, cancellationToken);
     }

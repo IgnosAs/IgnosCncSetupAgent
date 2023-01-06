@@ -8,11 +8,11 @@ using Microsoft.Win32.SafeHandles;
 namespace IgnosCncSetupAgent.FileTransfer;
 
 [SupportedOSPlatform("windows")]
-public class AuthenticateMachinePathWithImpersonation : IMachinePathAuthenticator
+public class AuthenticateMachineShareWithImpersonation : IMachineShareAuthenticator
 {
-    private readonly ILogger<AuthenticateMachinePathWithImpersonation> _logger;
+    private readonly ILogger<AuthenticateMachineShareWithImpersonation> _logger;
 
-    public AuthenticateMachinePathWithImpersonation(ILogger<AuthenticateMachinePathWithImpersonation> logger)
+    public AuthenticateMachineShareWithImpersonation(ILogger<AuthenticateMachineShareWithImpersonation> logger)
     {
         _logger = logger;
     }

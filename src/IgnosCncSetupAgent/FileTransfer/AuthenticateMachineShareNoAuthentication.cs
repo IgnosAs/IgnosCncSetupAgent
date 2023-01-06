@@ -2,7 +2,7 @@
 
 namespace IgnosCncSetupAgent.FileTransfer;
 
-public class AuthenticateMachinePathNoAuthentication : IMachinePathAuthenticator
+public class AuthenticateMachineShareNoAuthentication : IMachineShareAuthenticator
 {
     public Task AuthenticateIfRequiredAndRun(CncTransferMessage cncTransferMessage, Func<Task> job)
     {
