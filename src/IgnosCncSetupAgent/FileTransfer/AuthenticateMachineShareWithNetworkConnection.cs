@@ -71,11 +71,11 @@ public class AuthenticateMachineShareWithNetworkConnection : IMachineShareAuthen
             WNetCancelConnection2(_networkName, 0, true);
         }
 
-        [DllImport("mpr.dll")]
+        [DllImport("mpr.dll", CharSet = CharSet.Unicode)]
         private static extern int WNetAddConnection2(NetResource netResource,
             string password, string username, int flags);
 
-        [DllImport("mpr.dll")]
+        [DllImport("mpr.dll", CharSet = CharSet.Unicode)]
         private static extern int WNetCancelConnection2(string name, int flags,
             bool force);
     }
