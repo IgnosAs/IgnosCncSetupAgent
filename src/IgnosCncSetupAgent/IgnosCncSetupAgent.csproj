@@ -15,7 +15,7 @@
     <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.0.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
     <PackageReference Include="Ignos.Api.Client" Version="2023.1.4.4493" />
-    <PackageReference Include="Ignos.Common.Domain" Version="2023.1.5.4498" />
+    <PackageReference Include="Ignos.Common.Domain" Version="2023.1.6.4528" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.21.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="7.0.0" />

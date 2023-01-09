@@ -118,7 +118,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         try
         {
             await _machineShareAuthenticator.AuthenticateIfRequiredAndRun(
-                cncTransferMessage, 
+                cncTransferMessage,
                 () => HandleTransfer(cncTransferMessage, cancellationToken));
         }
         catch (Exception)
@@ -147,7 +147,10 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     private async Task HandleTransferFromCloud(CncTransferMessage cncTransferMessage, CancellationToken cancellationToken)
     {
-        await DeleteAllFilesAndFolders(cncTransferMessage.GetLocalPath(), cancellationToken);
+        if (cncTransferMessage.DeleteLocalFiles)
+        {
+            await DeleteAllFiles(cncTransferMessage.GetLocalPath(), cancellationToken);
+        }
 
         await DownloadAllFiles(cncTransferMessage, cancellationToken);
 
@@ -174,14 +177,17 @@ public class FileTransferHandlers : IFileTransferHandlers
         await Task.WhenAll(fileUploads.Select(
             upload => UploadFile(upload, localPath, cancellationToken)));
 
-        // Delete everything 
-        await DeleteAllFilesAndFolders(localPath, cancellationToken);
+        if (cncTransferMessage.DeleteLocalFiles)
+        {
+            // Delete files
+            await DeleteAllFiles(localPath, cancellationToken);
+        }
 
         // Report completed to API
         await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken, localFiles);
     }
 
-    private async Task DeleteAllFilesAndFolders(string path, CancellationToken cancellationToken)
+    private async Task DeleteAllFiles(string path, CancellationToken cancellationToken)
     {
         await Task.Run(() => Parallel.ForEach(
                 Directory.GetFiles(path),
