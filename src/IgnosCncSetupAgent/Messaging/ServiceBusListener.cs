@@ -21,7 +21,8 @@ public sealed class ServiceBusListener : IAsyncDisposable
             new ServiceBusProcessorOptions
             {
                 Identifier = $"ignos-agent-{agentConfig.QueueName}",
-                MaxConcurrentCalls = maxConcurrentListeners
+                MaxConcurrentCalls = maxConcurrentListeners,
+                ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete
             });
 
         _serviceBusProcessor.ProcessMessageAsync += messageHandler;

@@ -38,15 +38,14 @@ public class FileTransferHandlers : IFileTransferHandlers
 
     public async Task MessageHandler(ProcessMessageEventArgs args)
     {
-        var cncTransferMessage = await GetCncTransferMessage(args);
+        var cncTransferMessage = JsonSerializer.Deserialize<CncTransferMessage>(args.Message.Body);
 
         if (cncTransferMessage == null)
             return;
 
         if (!CncTransferMessageIsValid(cncTransferMessage))
         {
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, args.CancellationToken);
-            await args.DeadLetterMessageAsync(args.Message, "Invalid", "Invalid message", args.CancellationToken);
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, args.CancellationToken, "Invalid transfer message");
             return;
         }
 
@@ -76,32 +75,16 @@ public class FileTransferHandlers : IFileTransferHandlers
         if (cncTransferMessage.Direction != FileTransferDirection.ToCloud &&
             cncTransferMessage.Direction != FileTransferDirection.FromCloud)
         {
-            _logger.LogError("Received unknown direction {Direction}", cncTransferMessage.Direction);
+            _logger.LogError("CncTransferMessage with transfer id {TransferId} has unknown direction {Direction}", 
+                cncTransferMessage.TransferId, cncTransferMessage.Direction);
             return false;
         }
 
         return true;
     }
 
-    private async Task<CncTransferMessage?> GetCncTransferMessage(ProcessMessageEventArgs args)
-    {
-        CncTransferMessage? result = null;
-        try
-        {
-            result = JsonSerializer.Deserialize<CncTransferMessage>(args.Message.Body);
-        }
-        catch (Exception ex)
-        {
-            // No point in retrying this message. 
-            _logger.LogError(ex, "Failed to deserialize message");
-            await args.DeadLetterMessageAsync(args.Message, "Failed to deserialize", ex.Message, args.CancellationToken);
-        }
-
-        return result;
-    }
-
     private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage, FileTransferStatus fileTransferStatus,
-        CancellationToken cancellationToken, List<string>? filesTransferred = null)
+        CancellationToken cancellationToken, string? statusMessage = null, List<string>? filesTransferred = null)
     {
         return _cncFileTransferClient.SetTransferStatusAsync(
             cncTransferMessage.TransferId,
@@ -109,6 +92,7 @@ public class FileTransferHandlers : IFileTransferHandlers
             {
                 Status = fileTransferStatus,
                 Files = filesTransferred ?? cncTransferMessage.FilesToDownload.Select(f => f.Name).ToList(),
+                StatusMessage = statusMessage?[..Math.Min(statusMessage.Length, 500)]
             },
             cancellationToken);
     }
@@ -121,13 +105,11 @@ public class FileTransferHandlers : IFileTransferHandlers
                 cncTransferMessage,
                 () => HandleTransfer(cncTransferMessage, cancellationToken));
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Report failure to API.
-            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken);
-
-            // Throw to retry the message? 
-            throw;
+            await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken, ex.Message);
+            _logger.LogError(ex, "Failure during processing for file transfer {TransferId}", cncTransferMessage.TransferId);
         }
     }
 
@@ -184,7 +166,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         }
 
         // Report completed to API
-        await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken, localFiles);
+        await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Success, cancellationToken, filesTransferred: localFiles);
     }
 
     private async Task DeleteAllFiles(string path, CancellationToken cancellationToken)
