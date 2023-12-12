@@ -7,30 +7,18 @@ using FileTransferDirection = Ignos.Common.Domain.CncSetup.FileTransferDirection
 
 namespace IgnosCncSetupAgent.FileTransfer;
 
-public class FileTransferHandlers : IFileTransferHandlers
+public class FileTransferHandlers(
+    ICncSetupClient cncSetupClient,
+    ICncFileTransferClient cncFileTransferClient,
+    IMachineShareAuthenticator machineShareAuthenticator,
+    ILogger<FileTransferHandlers> logger
+        ) : IFileTransferHandlers
 {
-    private readonly ICncSetupClient _cncSetupClient;
-    private readonly ICncFileTransferClient _cncFileTransferClient;
-    private readonly IMachineShareAuthenticator _machineShareAuthenticator;
-    private readonly ILogger<FileTransferHandlers> _logger;
-
-    public FileTransferHandlers(
-        ICncSetupClient cncSetupClient,
-        ICncFileTransferClient cncFileTransferClient,
-        IMachineShareAuthenticator machineShareAuthenticator,
-        ILogger<FileTransferHandlers> logger
-        )
-    {
-        _cncSetupClient = cncSetupClient;
-        _cncFileTransferClient = cncFileTransferClient;
-        _machineShareAuthenticator = machineShareAuthenticator;
-        _logger = logger;
-    }
 
     public Task ErrorHandler(ProcessErrorEventArgs args)
     {
         // the error source tells me at what point in the processing an error occurred
-        _logger.LogError(args.Exception, "Message handling error {ErrorSource} {FullyQualifiedNamespace} {EntityPath}",
+        logger.LogError(args.Exception, "Message handling error {ErrorSource} {FullyQualifiedNamespace} {EntityPath}",
             args.ErrorSource, args.FullyQualifiedNamespace, args.EntityPath);
 
         return Task.CompletedTask;
@@ -49,7 +37,7 @@ public class FileTransferHandlers : IFileTransferHandlers
             return;
         }
 
-        _logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
+        logger.LogDebug("Received message {TransferId} with direction {Direction} for local path {LocalPath}",
             cncTransferMessage.TransferId, cncTransferMessage.Direction.ToString(), cncTransferMessage.GetLocalPath());
 
         await HandleTransferAndReport(cncTransferMessage, args.CancellationToken);
@@ -59,7 +47,7 @@ public class FileTransferHandlers : IFileTransferHandlers
     {
         if (string.IsNullOrEmpty(cncTransferMessage.MachineShare))
         {
-            _logger.LogError("CncTransferMessage with transfer id {TransferId} has empty machine share",
+            logger.LogError("CncTransferMessage with transfer id {TransferId} has empty machine share",
                 cncTransferMessage.TransferId);
             return false;
         }
@@ -67,7 +55,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         if (cncTransferMessage.Direction == FileTransferDirection.FromCloud &&
             cncTransferMessage.FilesToDownload.Count == 0)
         {
-            _logger.LogError("CncTransferMessage with transfer id {TransferId} has no files to download from cloud",
+            logger.LogError("CncTransferMessage with transfer id {TransferId} has no files to download from cloud",
                 cncTransferMessage.TransferId);
             return false;
         }
@@ -75,7 +63,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         if (cncTransferMessage.Direction != FileTransferDirection.ToCloud &&
             cncTransferMessage.Direction != FileTransferDirection.FromCloud)
         {
-            _logger.LogError("CncTransferMessage with transfer id {TransferId} has unknown direction {Direction}", 
+            logger.LogError("CncTransferMessage with transfer id {TransferId} has unknown direction {Direction}", 
                 cncTransferMessage.TransferId, cncTransferMessage.Direction);
             return false;
         }
@@ -86,7 +74,7 @@ public class FileTransferHandlers : IFileTransferHandlers
     private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage, FileTransferStatus fileTransferStatus,
         CancellationToken cancellationToken, string? statusMessage = null, List<string>? filesTransferred = null)
     {
-        return _cncFileTransferClient.SetTransferStatusAsync(
+        return cncFileTransferClient.SetTransferStatusAsync(
             cncTransferMessage.TransferId,
             new SetTransferStatusRequest
             {
@@ -101,7 +89,7 @@ public class FileTransferHandlers : IFileTransferHandlers
     {
         try
         {
-            await _machineShareAuthenticator.AuthenticateIfRequiredAndRun(
+            await machineShareAuthenticator.AuthenticateIfRequiredAndRun(
                 cncTransferMessage,
                 () => HandleTransfer(cncTransferMessage, cancellationToken));
         }
@@ -109,7 +97,7 @@ public class FileTransferHandlers : IFileTransferHandlers
         {
             // Report failure to API.
             await ReportCncTransferStatus(cncTransferMessage, FileTransferStatus.Failed, cancellationToken, ex.Message);
-            _logger.LogError(ex, "Failure during processing for file transfer {TransferId}", cncTransferMessage.TransferId);
+            logger.LogError(ex, "Failure during processing for file transfer {TransferId}", cncTransferMessage.TransferId);
         }
     }
 
@@ -151,7 +139,7 @@ public class FileTransferHandlers : IFileTransferHandlers
             .ToList();
 
         // Get file upload URIs.
-        var fileUploads = await _cncSetupClient.CreateUploadProgramsInfoAsync(
+        var fileUploads = await cncSetupClient.CreateUploadProgramsInfoAsync(
             cncTransferMessage.CncMachineOperationId,
             new UploadFileRequest { Filenames = localFiles });
 

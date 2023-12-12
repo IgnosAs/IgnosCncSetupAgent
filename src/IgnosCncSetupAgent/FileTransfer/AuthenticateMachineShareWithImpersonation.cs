@@ -8,14 +8,8 @@ using Microsoft.Win32.SafeHandles;
 namespace IgnosCncSetupAgent.FileTransfer;
 
 [SupportedOSPlatform("windows")]
-public class AuthenticateMachineShareWithImpersonation : IMachineShareAuthenticator
+public class AuthenticateMachineShareWithImpersonation(ILogger<AuthenticateMachineShareWithImpersonation> logger) : IMachineShareAuthenticator
 {
-    private readonly ILogger<AuthenticateMachineShareWithImpersonation> _logger;
-
-    public AuthenticateMachineShareWithImpersonation(ILogger<AuthenticateMachineShareWithImpersonation> logger)
-    {
-        _logger = logger;
-    }
     public async Task AuthenticateIfRequiredAndRun(CncTransferMessage cncTransferMessage, Func<Task> job)
     {
         if (cncTransferMessage.ShouldAuthenticate())
@@ -45,7 +39,7 @@ public class AuthenticateMachineShareWithImpersonation : IMachineShareAuthentica
         if (false == returnValue)
         {
             int ret = Marshal.GetLastWin32Error();
-            _logger.LogError("LogonUser failed with error code : {errorCode}", ret);
+            logger.LogError("LogonUser failed with error code : {errorCode}", ret);
             safeAccessTokenHandle = SafeAccessTokenHandle.InvalidHandle;
         }
 

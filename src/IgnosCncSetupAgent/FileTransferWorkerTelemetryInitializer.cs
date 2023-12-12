@@ -5,14 +5,9 @@ using Microsoft.Extensions.Options;
 
 namespace IgnosCncSetupAgent;
 
-public class FileTransferWorkerTelemetryInitializer : ITelemetryInitializer
+public class FileTransferWorkerTelemetryInitializer(IOptions<FileTransferWorkerOptions> options) : ITelemetryInitializer
 {
-    private readonly string _agentVersion; 
-
-    public FileTransferWorkerTelemetryInitializer(IOptions<FileTransferWorkerOptions> options)
-    {
-        _agentVersion = options.Value.AgentVersion;
-    }
+    private readonly string _agentVersion = options.Value.AgentVersion;
 
     public void Initialize(ITelemetry telemetry)
     {
