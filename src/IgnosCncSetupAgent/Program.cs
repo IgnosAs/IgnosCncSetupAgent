@@ -6,12 +6,12 @@ using IgnosCncSetupAgent.FileTransfer;
 using IgnosCncSetupAgent.Messaging;
 using Microsoft.ApplicationInsights.Extensibility;
 
-// sc.exe create "Ignos CNC Setup Agent Service" start=auto binpath="path.to.agent.exe" obj="NT AUTHORITY\LocalService"
+// sc.exe create "Ignos Keep Agent Service" start=auto binpath="path.to.agent.exe" obj="NT AUTHORITY\LocalService"
 // (if desirable, and local computer has access to shares, run as obj="NT AUTHORITY\NetworkService")
 // Give access to folder containing service files to account running the service
 
 IHost host = Host.CreateDefaultBuilder(args)
-    .UseWindowsService(options => options.ServiceName = "Ignos CNC Setup Agent Service")
+    .UseWindowsService(options => options.ServiceName = "Ignos Keep Agent Service")
     .ConfigureServices((hostContext, services) =>
     {
         services.Configure<FileTransferWorkerOptions>(

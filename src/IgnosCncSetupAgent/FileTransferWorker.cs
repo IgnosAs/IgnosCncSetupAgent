@@ -1,7 +1,6 @@
 using IgnosCncSetupAgent.Config;
 using IgnosCncSetupAgent.FileTransfer;
 using IgnosCncSetupAgent.Messaging;
-using Microsoft.Extensions.Options;
 
 namespace IgnosCncSetupAgent;
 
