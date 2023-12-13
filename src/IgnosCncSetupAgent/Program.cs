@@ -38,8 +38,7 @@ IHost host = Host.CreateDefaultBuilder(args)
             .AddAzureAuthenticationHandler()
             .AddDefaultPolicyHandler();
 
-        services.AddIgnosApiClient<ICncFileTransferClient, CncFileTransferClient>();
-        services.AddIgnosApiClient<ICncSetupClient, CncSetupClient>();
+        services.AddIgnosApiClient<ICncSetupAgentClient, CncSetupAgentClient>();
     })
     .Build();
 

@@ -8,8 +8,7 @@ using FileTransferDirection = Ignos.Common.Domain.CncSetup.FileTransferDirection
 namespace IgnosCncSetupAgent.FileTransfer;
 
 public class FileTransferHandlers(
-    ICncSetupClient cncSetupClient,
-    ICncFileTransferClient cncFileTransferClient,
+    ICncSetupAgentClient cncSetupAgentClient,
     IMachineShareAuthenticator machineShareAuthenticator,
     ILogger<FileTransferHandlers> logger
         ) : IFileTransferHandlers
@@ -74,7 +73,7 @@ public class FileTransferHandlers(
     private Task ReportCncTransferStatus(CncTransferMessage cncTransferMessage, FileTransferStatus fileTransferStatus,
         CancellationToken cancellationToken, string? statusMessage = null, List<string>? filesTransferred = null)
     {
-        return cncFileTransferClient.SetTransferStatusAsync(
+        return cncSetupAgentClient.SetTransferStatusAsync(
             cncTransferMessage.TransferId,
             new SetTransferStatusRequest
             {
@@ -139,7 +138,7 @@ public class FileTransferHandlers(
             .ToList();
 
         // Get file upload URIs.
-        var fileUploads = await cncSetupClient.CreateUploadProgramsInfoAsync(
+        var fileUploads = await cncSetupAgentClient.CreateUploadProgramsInfoAsync(
             cncTransferMessage.CncMachineOperationId,
             new UploadFileRequest { Filenames = localFiles });
 
