@@ -37,6 +37,15 @@ stages:
               zipAfterPublish: true
             condition: succeeded()
 
+          - task: ArchiveFiles@2
+            inputs:
+              replaceExistingArchive: false
+              rootFolderOrFile: $(Build.SourcesDirectory)/images
+          - task: ArchiveFiles@2
+            inputs:
+              replaceExistingArchive: false
+              rootFolderOrFile: $(Build.SourcesDirectory)/README.md
+
           - publish: '$(Build.ArtifactStagingDirectory)'
             artifact: drop
 
@@ -47,9 +56,7 @@ stages:
               gitHubConnection: 'github.com_tthorsen'
               tagSource: userSpecifiedTag
               tag: $(Build.BuildNumber)
-              assets: |
-                  $(Build.ArtifactStagingDirectory)/**/*.zip
-                  $(Build.SourcesDirectory)/README.md
+              assets: $(Build.ArtifactStagingDirectory)/**/*.zip
 
 
             
