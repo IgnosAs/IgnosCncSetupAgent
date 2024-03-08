@@ -10,12 +10,12 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.4" />
 	  
-	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.1" />
+	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.4" />
 
     <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.0.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
-    <PackageReference Include="Ignos.Api.Client" Version="2023.12.13.7732" />
-    <PackageReference Include="Ignos.Common.Domain" Version="2023.12.7.7501" />
+    <PackageReference Include="Ignos.Api.Client" Version="2024.2.5.8366" />
+    <PackageReference Include="Ignos.Common.Domain" Version="2024.3.8.8691" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
 
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
