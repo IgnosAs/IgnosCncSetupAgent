@@ -173,6 +173,7 @@ public class FileTransferHandlers(
     private async Task DownloadFile(FileToDownload fileToDownload, string localPath, CancellationToken cancellationToken)
     {
         var blobClient = new BlobClient(new Uri(fileToDownload.Url));
+        logger.LogDebug($"Downloading {fileToDownload.Name} from {fileToDownload.Url} to {localPath}");
 
         using var localFile = File.Create(Path.Join(localPath, fileToDownload.Name));
 
@@ -182,6 +183,7 @@ public class FileTransferHandlers(
     private async Task UploadFile(UploadFileDto upload, string localPath, CancellationToken cancellationToken)
     {
         var blobClient = new BlobClient(new Uri(upload.Url));
+        logger.LogDebug($"Uploading {upload.Filename} from {localPath} to {upload.Url}");
 
         using var localFile = File.OpenRead(Path.Join(localPath, upload.Filename));
 

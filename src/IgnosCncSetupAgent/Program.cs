@@ -32,7 +32,8 @@ IHost host = Host.CreateDefaultBuilder(args)
         services.AddHostedService<FileTransferWorker>();
 
         services.AddSingleton<ITelemetryInitializer, FileTransferWorkerTelemetryInitializer>();
-        services.AddApplicationInsightsTelemetryWorkerService();
+        services.AddApplicationInsightsTelemetryWorkerService(o =>
+            o.EnableDependencyTrackingTelemetryModule = false);
 
         services.AddIgnosHttpClient(hostContext.Configuration)
             .AddAzureAuthenticationHandler()
