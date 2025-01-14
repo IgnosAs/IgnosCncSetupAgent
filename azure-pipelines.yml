@@ -22,7 +22,7 @@ stages:
         steps:
           - task: UseDotNet@2
             inputs:
-              version: '8.x'
+              version: '9.x'
               includePreviewVersions: false
           
           - task: NuGetAuthenticate@1

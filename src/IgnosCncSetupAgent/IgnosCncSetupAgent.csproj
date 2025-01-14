@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-IgnosCncSetupAgent-16ded9aa-f664-49e5-b1b6-f8a00dee5e97</UserSecretsId>
@@ -12,14 +12,14 @@
 	  
 	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
 
-    <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.0.1" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
-    <PackageReference Include="Ignos.Api.Client" Version="2024.9.2.10233" />
+    <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.1.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.23.0" />
+    <PackageReference Include="Ignos.Api.Client" Version="2025.1.14.10946" />
     <PackageReference Include="Ignos.Common.Domain" Version="2024.10.11.10548" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
 
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.0" />
     <PackageReference Include="Microsoft.NETCore.Targets" Version="5.0.0" />
   </ItemGroup>
 </Project>
