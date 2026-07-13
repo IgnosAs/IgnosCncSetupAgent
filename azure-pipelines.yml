@@ -55,7 +55,7 @@ stages:
             displayName: 'Create GitHub Release'
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
             inputs:
-              gitHubConnection: 'Ignos'
+              gitHubConnection: 'github.com_IgnosAs'
               tagSource: userSpecifiedTag
               tag: $(Build.BuildNumber)
               assets: $(Build.ArtifactStagingDirectory)/**/*.zip
