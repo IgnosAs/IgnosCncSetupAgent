@@ -8,15 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
+	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
 
     <PackageReference Include="Azure.ResourceManager.ServiceBus" Version="1.1.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
-    <PackageReference Include="Ignos.Api.Client" Version="20260216.8.1" />
-    <PackageReference Include="Ignos.Common.Domain" Version="2026.5.5.14982" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.29.1" />
+    <PackageReference Include="Ignos.Api.Client" Version="20260713.15.1" />
+    <PackageReference Include="Ignos.Common.Domain" Version="2026.7.13.15868" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
 
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.9" />
   </ItemGroup>
 </Project>
